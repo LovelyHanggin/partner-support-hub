@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Partner Support Hub - Multi-Email Support</title>
+    <style>
+        :root { --primary: #0284c7; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        h2::before { content: '🌍'; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 5px; }
+        select, input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #fff; transition: border 0.2s; }
+        select:focus, input:focus { border-color: var(--primary); outline: none; }
+        
+        .alert-sla { background: #fffbeb; border: 1px solid #fef3c7; color: #92400e; padding: 12px; border-radius: 6px; font-size: 13px; margin-bottom: 20px; display: none; }
+
+        .output-box { border-top: 2px solid #f1f5f9; padding-top: 20px; display: none; }
+        .copy-card { background: #f1f5f9; border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .copy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        pre { background: white; padding: 12px; border: 1px solid #cbd5e1; border-radius: 4px; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; margin: 0; min-height: 1.2em; color: #334155; }
+        
+        button { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .badge { color: #16a34a; font-size: 11px; font-weight: bold; visibility: hidden; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Partner Support Hub</h2>
+    
+    <div id="slaAlert" class="alert-sla"></div>
+
+    <div class="grid">
+        <div class="input-group">
+            <label>1. Select Partner & Route</label>
+            <select id="partnerKey" onchange="generate()">
+                <option value="">-- Choose Partner --</option>
+                <option value="GH_ABSA">Ghana - Absa (All Emails)</option>
+                <option value="KE_ABSA">Kenya - Absa (All Emails)</option>
+                <option value="PH_BPI">Philippines - BPI (All Emails)</option>
+                <option value="PH_GCASH">Philippines - GCash (Multiple DLs)</option>
+                <option value="KE_SAFARICOM">Kenya - Safaricom M-Pesa</option>
+                <option value="PK_AL_HABIB">Pakistan - Bank Al Habib</option>
+                <option value="TZ_VODA">Tanzania - Vodacom M-Pesa</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>2. Issue Category</label>
+            <select id="issue" onchange="generate()">
+                <option value="Recall Request">Recall Request</option>
+                <option value="Funds Not Received">Funds Not Received</option>
+                <option value="Incorrect Details">Incorrect Details Amendment</option>
+                <option value="KYC Pending">Compliance/KYC Inquiry</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="input-group"><label>Recipient Name</label><input type="text" id="name" placeholder="Full Name" oninput="generate()"></div>
+        <div class="input-group"><label>Transaction Amount</label><input type="text" id="amt" placeholder="e.g. 500 USD" oninput="generate()"></div>
+        <div class="input-group"><label>Account/Wallet ID</label><input type="text" id="acc" placeholder="Number" oninput="generate()"></div>
+        <div class="input-group"><label>Recipient Mobile</label><input type="text" id="mobile" placeholder="+..." oninput="generate()"></div>
+    </div>
+
+    <div id="output" class="output-box">
+        <div class="copy-card">
+            <div class="copy-header">
+                <label>A. Recipient Email Addresses (CC'd if applicable)</label>
+                <span id="b1" class="badge">COPIED</span>
+                <button onclick="copy('outEmail', 'b1')">Copy All Emails</button>
+            </div>
+            <pre id="outEmail" style="color: #0369a1; font-weight: bold;"></pre>
+        </div>
+        <div class="copy-card">
+            <div class="copy-header"><label>B. Professional Subject Line</label><span id="b2" class="badge">COPIED</span><button onclick="copy('outSub', 'b2')">Copy Subject</button></div>
+            <pre id="outSub"></pre>
+        </div>
+        <div class="copy-card">
+            <div class="copy-header"><label>C. Formatted Message Body</label><span id="b3" class="badge">COPIED</span><button onclick="copy('outBody', 'b3')">Copy Body</button></div>
+            <pre id="outBody"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* DATA SOURCE MAPPING 
+       I have included multiple emails where available from the master list.
+    */
+    const partnerDatabase = {
+        "GH_ABSA": { 
+            emails: "AbsaWorldremitOps@absa.africa; GH.Remittance@absa.africa", 
+            sla: "Within minutes" 
+        },
+        "KE_ABSA": { 
+            emails: "contactcentreusers@absa.africa; remittanceteam@absa.africa", 
+            sla: "Within minutes" 
+        },
+        "PH_BPI": { 
+            emails: "remittance-inquiries@bpi.com.ph; bpimobilebanking@bpi.com.ph", 
+            sla: "Within minutes (Manual review up to 2hrs)" 
+        },
+        "PH_GCASH": { 
+            emails: "cicopartnersupport@gcash.com; partner-settlement@gcash.com", 
+            sla: "Instant Payment" 
+        },
+        "KE_SAFARICOM": { 
+            emails: "imt@safaricom.co.ke; mpesasupport@safaricom.co.ke", 
+            sla: "Within minutes" 
+        },
+        "PK_AL_HABIB": { 
+            emails: "hroperations@bankalhabib.com; cpusupport@bankalhabib.com", 
+            sla: "Within Minutes" 
+        },
+        "TZ_VODA": {
+            emails: "m-pesasupport@vodacom.co.tz; tanzaniaoperations@vodacom.com",
+            sla: "1-2 Hours"
+        }
+    };
+
+    function generate() {
+        const key = document.getElementById('partnerKey').value;
+        const issue = document.getElementById('issue').value;
+        const name = document.getElementById('name').value || "[Name]";
+        const amt = document.getElementById('amt').value || "[Amount]";
+        const acc = document.getElementById('acc').value || "[Acc/Wallet]";
+        const mobile = document.getElementById('mobile').value || "[Mobile]";
+
+        if (!key) { document.getElementById('output').style.display = 'none'; return; }
+        
+        const partner = partnerDatabase[key];
+        document.getElementById('output').style.display = 'block';
+        
+        // Update SLA notice
+        const slaBox = document.getElementById('slaAlert');
+        slaBox.style.display = 'block';
+        slaBox.innerHTML = `<strong>Partner SLA Notice:</strong> Expected processing is ${partner.sla}. Please check the case timeline before follow-up.`;
+
+        // Output logic
+        document.getElementById('outEmail').innerText = partner.emails;
+        document.getElementById('outSub').innerText = `${issue} | ${name} | ${amt}`;
+        
+        let bodyText = `Dear Partner Team,\n\nPlease assist with a ${issue} situation for the following transaction:\n\n`;
+        bodyText += `• Recipient Name: ${name}\n`;
+        bodyText += `• Amount/Currency: ${amt}\n`;
+        bodyText += `• Account/Wallet ID: ${acc}\n`;
+        bodyText += `• Contact Mobile: ${mobile}\n\n`;
+        bodyText += `Kindly investigate the current status and provide an update or confirmation of credit.\n\nBest regards,\nCustomer Care Operations`;
+
+        document.getElementById('outBody').innerText = bodyText;
+    }
+
+    function copy(id, bId) {
+        const text = document.getElementById(id).innerText;
+        navigator.clipboard.writeText(text);
+        const b = document.getElementById(bId); b.style.visibility = 'visible';
+        setTimeout(() => { b.style.visibility = 'hidden'; }, 1000);
+    }
+</script>
+</body>
+</html>
